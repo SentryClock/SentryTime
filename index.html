@@ -19,6 +19,14 @@ button:disabled { background: #888; cursor: not-allowed; }
 .status { color: #80ff80; margin: 8px auto; max-width: 400px; }
 label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; font-size: 13px; color: #ccc; padding-left: 4px; }
 .section-box { background: #555; border-radius: 8px; padding: 16px; max-width: 440px; margin: 12px auto; }
+
+/* Searchable dropdown */
+.search-select-wrapper { position: relative; width: 90%; max-width: 400px; margin: 6px auto; display: block; }
+.search-select-wrapper input { width: 100%; margin: 0; }
+.search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 0 0 6px 6px; max-height: 220px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+.search-option { padding: 13px 12px; color: #333; cursor: pointer; text-align: left; font-size: 15px; border-bottom: 1px solid #eee; }
+.search-option:last-child { border-bottom: none; }
+.search-option:active, .search-option.highlighted { background: #f0f0f0; }
 </style>
 </head>
 
@@ -53,8 +61,9 @@ label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; 
       <option>Office</option>
     </select>
     <label for="siteName">Site Name</label>
-    <input id="siteName" placeholder="Type to search sites..." list="sitesList" autocomplete="off">
-    <datalist id="sitesList"></datalist>
+    <div class="search-select-wrapper">
+      <input id="siteName" placeholder="Search sites..." autocomplete="off">
+    </div>
     <button onclick="clockIn()" id="clockInBtn">Clock In</button>
     <div id="clockInError" class="error hidden"></div>
   </div>
@@ -70,7 +79,9 @@ label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; 
   <!-- Travel form -->
   <div id="travelDiv" class="hidden section-box">
     <label for="destination">Destination / Site Name</label>
-    <input id="destination" placeholder="Type to search sites..." list="sitesList" autocomplete="off">
+    <div class="search-select-wrapper">
+      <input id="destination" placeholder="Search sites..." autocomplete="off">
+    </div>
     <label for="odoStart">Odometer Start (miles)</label>
     <input id="odoStart" type="number" placeholder="0000">
     <button onclick="startTravel()">Start Travel</button>
@@ -97,7 +108,9 @@ label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; 
       <option>Office</option>
     </select>
     <label for="arrivalSiteName">Site Name</label>
-    <input id="arrivalSiteName" placeholder="Type to search sites..." list="sitesList" autocomplete="off">
+    <div class="search-select-wrapper">
+      <input id="arrivalSiteName" placeholder="Search sites..." autocomplete="off">
+    </div>
     <button onclick="arriveAtSite()">Start Work</button>
     <div id="arrivalError" class="error hidden"></div>
   </div>
@@ -123,8 +136,9 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbymVAEfac2OBBZ9A6-IH
 
 // --- State ---
 let currentUser = "";
-let currentState = "clockIn"; // clockIn | working | travel | traveling | arrival | lunch | clockOut
-let travelDepartureGPS = ""; // saved when travel starts
+let currentState = "clockIn";
+let travelDepartureGPS = "";
+let sitesData = [];
 
 // --- Persistence ---
 function saveState() {
@@ -215,6 +229,62 @@ function api(params) {
   });
 }
 
+// --- Searchable dropdown ---
+function setupSearchSelect(inputId) {
+  const input = document.getElementById(inputId);
+  const wrapper = input.parentElement;
+
+  const dropdown = document.createElement("div");
+  dropdown.className = "search-dropdown hidden";
+  wrapper.appendChild(dropdown);
+
+  function renderOptions(filter) {
+    const matches = filter
+      ? sitesData.filter(s => s.toLowerCase().includes(filter.toLowerCase()))
+      : sitesData;
+
+    dropdown.innerHTML = matches.map(s =>
+      `<div class="search-option">${s}</div>`
+    ).join("");
+
+    dropdown.classList.toggle("hidden", matches.length === 0);
+
+    dropdown.querySelectorAll(".search-option").forEach(opt => {
+      opt.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        input.value = opt.innerText;
+        dropdown.classList.add("hidden");
+      });
+    });
+  }
+
+  input.addEventListener("focus", () => renderOptions(input.value));
+  input.addEventListener("input", () => renderOptions(input.value));
+  input.addEventListener("blur", () => {
+    setTimeout(() => {
+      dropdown.classList.add("hidden");
+      // Clear if typed value not in list
+      if (input.value && !sitesData.includes(input.value)) {
+        input.value = "";
+      }
+    }, 200);
+  });
+}
+
+// --- Sites ---
+function loadSites() {
+  api({ action: "getSites" })
+    .then(d => {
+      if (d.sites) {
+        sitesData = d.sites;
+        setupSearchSelect("siteName");
+        setupSearchSelect("destination");
+        setupSearchSelect("arrivalSiteName");
+      }
+    })
+    .catch(() => {});
+}
+
 // --- Login ---
 function login() {
   hideError("loginError");
@@ -267,7 +337,11 @@ function clockIn() {
   const siteName = document.getElementById("siteName").value.trim();
 
   if (!siteName) {
-    showError("clockInError", "Please enter a site name.");
+    showError("clockInError", "Please select a site name.");
+    return;
+  }
+  if (!sitesData.includes(siteName)) {
+    showError("clockInError", "Please select a valid site from the list.");
     return;
   }
 
@@ -303,7 +377,11 @@ function startTravel() {
   const odometerStart = document.getElementById("odoStart").value;
 
   if (!destination) {
-    showError("travelError", "Please enter a destination.");
+    showError("travelError", "Please select a destination.");
+    return;
+  }
+  if (!sitesData.includes(destination)) {
+    showError("travelError", "Please select a valid site from the list.");
     return;
   }
   if (!odometerStart) {
@@ -343,7 +421,11 @@ function arriveAtSite() {
     return;
   }
   if (!siteName) {
-    showError("arrivalError", "Please enter a site name.");
+    showError("arrivalError", "Please select a site name.");
+    return;
+  }
+  if (!sitesData.includes(siteName)) {
+    showError("arrivalError", "Please select a valid site from the list.");
     return;
   }
 
@@ -429,18 +511,6 @@ function clockOut() {
       alert(err);
       showOnly("working");
     });
-}
-
-// --- Sites dropdown ---
-function loadSites() {
-  api({ action: "getSites" })
-    .then(d => {
-      if (d.sites) {
-        const options = d.sites.map(s => `<option value="${s}">`).join("");
-        document.getElementById("sitesList").innerHTML = options;
-      }
-    })
-    .catch(() => {}); // silently fail — user can still type manually
 }
 
 // --- Init ---
