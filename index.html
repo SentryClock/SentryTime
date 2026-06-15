@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sentry Security</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+* { box-sizing: border-box; }
+body { font-family: Arial; background: #444; color: white; text-align: center; margin: 0; padding: 20px; }
+h2 { margin-bottom: 20px; }
+h3 { margin-bottom: 16px; }
+input, select, button { padding: 12px; margin: 6px auto; width: 90%; max-width: 400px; display: block; border-radius: 4px; border: none; font-size: 15px; }
+select { background: white; color: #333; }
+button { background: darkred; color: white; cursor: pointer; font-size: 15px; }
+button:hover { background: #a00; }
+button:disabled { background: #888; cursor: not-allowed; }
+.hidden { display: none; }
+.error { color: #ff8080; margin: 8px auto; max-width: 400px; }
+.status { color: #80ff80; margin: 8px auto; max-width: 400px; }
+label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; font-size: 13px; color: #ccc; padding-left: 4px; }
+.section-box { background: #555; border-radius: 8px; padding: 16px; max-width: 440px; margin: 12px auto; }
+</style>
+</head>
+
+<body>
+
+<h2>Sentry Security</h2>
+
+<!-- LOGIN -->
+<div id="loginDiv">
+  <div class="section-box">
+    <label for="username">Username</label>
+    <input id="username" placeholder="Username" autocomplete="username">
+    <label for="password">Password</label>
+    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+    <button onclick="login()" id="loginBtn">Login</button>
+    <div id="loginError" class="error hidden"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appDiv" class="hidden">
+
+  <h3 id="welcome"></h3>
+
+  <!-- Clock In -->
+  <div id="clockInDiv" class="section-box">
+    <label for="workType">Work Type</label>
+    <select id="workType">
+      <option>Inspection</option>
+      <option>Service</option>
+      <option>Install</option>
+      <option>Office</option>
+    </select>
+    <label for="siteName">Site Name</label>
+    <input id="siteName" placeholder="Type to search sites..." list="sitesList" autocomplete="off">
+    <datalist id="sitesList"></datalist>
+    <button onclick="clockIn()" id="clockInBtn">Clock In</button>
+    <div id="clockInError" class="error hidden"></div>
+  </div>
+
+  <!-- Working controls -->
+  <div id="workingDiv" class="hidden section-box">
+    <div id="workingStatus" class="status"></div>
+    <button onclick="showTravel()">Travel to New Site</button>
+    <button onclick="startLunch()">Start Lunch</button>
+    <button onclick="confirmClockOut()">Clock Out</button>
+  </div>
+
+  <!-- Travel form -->
+  <div id="travelDiv" class="hidden section-box">
+    <label for="destination">Destination / Site Name</label>
+    <input id="destination" placeholder="Type to search sites..." list="sitesList" autocomplete="off">
+    <label for="odoStart">Odometer Start (miles)</label>
+    <input id="odoStart" type="number" placeholder="0000">
+    <button onclick="startTravel()">Start Travel</button>
+    <button onclick="cancelTravel()">Cancel</button>
+    <div id="travelError" class="error hidden"></div>
+  </div>
+
+  <!-- Traveling (en route) -->
+  <div id="travelingDiv" class="hidden section-box">
+    <div class="status">Traveling...</div>
+    <button onclick="showArrival()">Arrive at Site</button>
+    <button onclick="startLunch()">Start Lunch</button>
+  </div>
+
+  <!-- Arrival form -->
+  <div id="arrivalDiv" class="hidden section-box">
+    <label for="odoEnd">Odometer End (miles)</label>
+    <input id="odoEnd" type="number" placeholder="0000">
+    <label for="arrivalWorkType">Work Type</label>
+    <select id="arrivalWorkType">
+      <option>Inspection</option>
+      <option>Service</option>
+      <option>Install</option>
+      <option>Office</option>
+    </select>
+    <label for="arrivalSiteName">Site Name</label>
+    <input id="arrivalSiteName" placeholder="Type to search sites..." list="sitesList" autocomplete="off">
+    <button onclick="arriveAtSite()">Start Work</button>
+    <div id="arrivalError" class="error hidden"></div>
+  </div>
+
+  <!-- Lunch -->
+  <div id="lunchDiv" class="hidden section-box">
+    <div class="status">On Lunch Break</div>
+    <button onclick="endLunch()">End Lunch</button>
+  </div>
+
+  <!-- Clock-out confirmation -->
+  <div id="clockOutDiv" class="hidden section-box">
+    <p>Are you sure you want to clock out?</p>
+    <button onclick="clockOut()">Yes, Clock Out</button>
+    <button onclick="cancelClockOut()">Cancel</button>
+  </div>
+
+</div>
+
+<script>
+
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbymVAEfac2OBBZ9A6-IHWJzezF3vQdgFGzwVuHS6WVs5TCI9NBXuTvNnyCuY5AKMWBK/exec";
+
+// --- State ---
+let currentUser = "";
+let currentState = "clockIn"; // clockIn | working | travel | traveling | arrival | lunch | clockOut
+let travelDepartureGPS = ""; // saved when travel starts
+
+// --- Persistence ---
+function saveState() {
+  sessionStorage.setItem("sentry_user", currentUser);
+  sessionStorage.setItem("sentry_state", currentState);
+  sessionStorage.setItem("sentry_workStatus", document.getElementById("workingStatus").innerText);
+}
+
+function restoreState() {
+  const user = sessionStorage.getItem("sentry_user");
+  const state = sessionStorage.getItem("sentry_state");
+  const status = sessionStorage.getItem("sentry_workStatus") || "";
+
+  if (!user || !state || state === "clockIn") return;
+
+  currentUser = user;
+  currentState = state;
+  document.getElementById("welcome").innerText = "Welcome " + currentUser;
+  document.getElementById("workingStatus").innerText = status;
+  document.getElementById("loginDiv").classList.add("hidden");
+  document.getElementById("appDiv").classList.remove("hidden");
+  showOnly(state);
+}
+
+function clearState() {
+  sessionStorage.removeItem("sentry_user");
+  sessionStorage.removeItem("sentry_state");
+  sessionStorage.removeItem("sentry_workStatus");
+}
+
+// --- UI helpers ---
+const ALL_DIVS = ["clockInDiv", "workingDiv", "travelDiv", "travelingDiv", "arrivalDiv", "lunchDiv", "clockOutDiv"];
+
+function showOnly(stateName) {
+  const map = {
+    clockIn: "clockInDiv",
+    working: "workingDiv",
+    travel: "travelDiv",
+    traveling: "travelingDiv",
+    arrival: "arrivalDiv",
+    lunch: "lunchDiv",
+    clockOut: "clockOutDiv"
+  };
+  ALL_DIVS.forEach(id => document.getElementById(id).classList.add("hidden"));
+  const target = map[stateName];
+  if (target) document.getElementById(target).classList.remove("hidden");
+  currentState = stateName;
+  saveState();
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.innerText = msg;
+  el.classList.remove("hidden");
+}
+
+function hideError(id) {
+  document.getElementById(id).classList.add("hidden");
+}
+
+function setBtn(id, disabled, text) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled = disabled;
+  if (text) btn.innerText = text;
+}
+
+// --- GPS wrapper ---
+function getGPS() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject("Geolocation not supported");
+    navigator.geolocation.getCurrentPosition(
+      p => resolve(p.coords.latitude + "," + p.coords.longitude),
+      () => reject("Could not get location. Please allow location access.")
+    );
+  });
+}
+
+// --- API wrapper ---
+function api(params) {
+  return fetch(SCRIPT_URL, {
+    method: "POST",
+    body: new URLSearchParams(params)
+  })
+  .then(r => {
+    if (!r.ok) throw new Error("Server error: " + r.status);
+    return r.json();
+  });
+}
+
+// --- Login ---
+function login() {
+  hideError("loginError");
+  setBtn("loginBtn", true, "Logging in...");
+
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+
+  if (!username || !password) {
+    showError("loginError", "Please enter username and password.");
+    setBtn("loginBtn", false, "Login");
+    return;
+  }
+
+  api({ action: "login", username, password })
+    .then(d => {
+      if (d.success) {
+        currentUser = d.name;
+        document.getElementById("loginDiv").classList.add("hidden");
+        document.getElementById("appDiv").classList.remove("hidden");
+        document.getElementById("welcome").innerText = "Welcome " + currentUser;
+
+        if (d.activeSession) {
+          const s = d.activeSession;
+          const statusText = s.workType && s.siteName ? s.workType + " — " + s.siteName : "";
+          document.getElementById("workingStatus").innerText = statusText;
+
+          if (s.type === "LUNCH") {
+            showOnly("lunch");
+          } else if (s.type === "TRAVEL") {
+            showOnly("traveling");
+          } else {
+            showOnly("working");
+          }
+        } else {
+          showOnly("clockIn");
+        }
+      } else {
+        showError("loginError", "Invalid username or password.");
+      }
+    })
+    .catch(() => showError("loginError", "Connection error. Please try again."))
+    .finally(() => setBtn("loginBtn", false, "Login"));
+}
+
+// --- Clock In ---
+function clockIn() {
+  hideError("clockInError");
+  const workType = document.getElementById("workType").value;
+  const siteName = document.getElementById("siteName").value.trim();
+
+  if (!siteName) {
+    showError("clockInError", "Please enter a site name.");
+    return;
+  }
+
+  setBtn("clockInBtn", true, "Clocking in...");
+
+  getGPS()
+    .then(gps => api({ action: "clockIn", employee: currentUser, workType, siteName, gps }))
+    .then(d => {
+      if (d.success) {
+        document.getElementById("workingStatus").innerText = workType + " — " + siteName;
+        document.getElementById("siteName").value = "";
+        showOnly("working");
+      } else {
+        showError("clockInError", "Clock in failed. Please try again.");
+      }
+    })
+    .catch(err => showError("clockInError", err))
+    .finally(() => setBtn("clockInBtn", false, "Clock In"));
+}
+
+// --- Travel ---
+function showTravel() {
+  showOnly("travel");
+}
+
+function cancelTravel() {
+  showOnly("working");
+}
+
+function startTravel() {
+  hideError("travelError");
+  const destination = document.getElementById("destination").value.trim();
+  const odometerStart = document.getElementById("odoStart").value;
+
+  if (!destination) {
+    showError("travelError", "Please enter a destination.");
+    return;
+  }
+  if (!odometerStart) {
+    showError("travelError", "Please enter odometer start reading.");
+    return;
+  }
+
+  getGPS()
+    .then(gps => {
+      travelDepartureGPS = gps;
+      return api({ action: "startTravel", employee: currentUser, destination, odometerStart, gps });
+    })
+    .then(d => {
+      if (d.success) {
+        document.getElementById("destination").value = "";
+        document.getElementById("odoStart").value = "";
+        showOnly("traveling");
+      } else {
+        showError("travelError", "Failed to start travel. Please try again.");
+      }
+    })
+    .catch(err => showError("travelError", err));
+}
+
+function showArrival() {
+  showOnly("arrival");
+}
+
+function arriveAtSite() {
+  hideError("arrivalError");
+  const odometerEnd = document.getElementById("odoEnd").value;
+  const workType = document.getElementById("arrivalWorkType").value;
+  const siteName = document.getElementById("arrivalSiteName").value.trim();
+
+  if (!odometerEnd) {
+    showError("arrivalError", "Please enter odometer end reading.");
+    return;
+  }
+  if (!siteName) {
+    showError("arrivalError", "Please enter a site name.");
+    return;
+  }
+
+  getGPS()
+    .then(gpsEnd => api({
+      action: "arriveAtSite",
+      employee: currentUser,
+      gpsEnd,
+      odometerEnd,
+      workType,
+      siteName,
+      gpsStart: travelDepartureGPS || gpsEnd
+    }))
+    .then(d => {
+      if (d.success) {
+        document.getElementById("workingStatus").innerText = workType + " — " + siteName;
+        document.getElementById("odoEnd").value = "";
+        document.getElementById("arrivalSiteName").value = "";
+        travelDepartureGPS = "";
+        showOnly("working");
+      } else {
+        showError("arrivalError", "Failed to record arrival. Please try again.");
+      }
+    })
+    .catch(err => showError("arrivalError", err));
+}
+
+// --- Lunch ---
+function startLunch() {
+  getGPS()
+    .then(gps => api({ action: "startLunch", employee: currentUser, gps }))
+    .then(d => {
+      if (d.success) showOnly("lunch");
+      else alert("Failed to start lunch. Please try again.");
+    })
+    .catch(err => alert(err));
+}
+
+function endLunch() {
+  let lunchEndGPS = "";
+  getGPS()
+    .then(gps => {
+      lunchEndGPS = gps;
+      return api({ action: "endLunch", employee: currentUser, gps });
+    })
+    .then(d => {
+      if (d.success) {
+        if (d.resumeType === "TRAVEL") {
+          travelDepartureGPS = lunchEndGPS;
+          showOnly("traveling");
+        } else {
+          showOnly("working");
+        }
+      } else {
+        alert("Failed to end lunch. Please try again.");
+      }
+    })
+    .catch(err => alert(err));
+}
+
+// --- Clock Out ---
+function confirmClockOut() {
+  showOnly("clockOut");
+}
+
+function cancelClockOut() {
+  showOnly("working");
+}
+
+function clockOut() {
+  getGPS()
+    .then(gps => api({ action: "clockOut", employee: currentUser, gps }))
+    .then(d => {
+      if (d.success) {
+        clearState();
+        location.reload();
+      } else {
+        alert("Clock out failed. Please try again.");
+        showOnly("working");
+      }
+    })
+    .catch(err => {
+      alert(err);
+      showOnly("working");
+    });
+}
+
+// --- Sites dropdown ---
+function loadSites() {
+  api({ action: "getSites" })
+    .then(d => {
+      if (d.sites) {
+        const options = d.sites.map(s => `<option value="${s}">`).join("");
+        document.getElementById("sitesList").innerHTML = options;
+      }
+    })
+    .catch(() => {}); // silently fail — user can still type manually
+}
+
+// --- Init ---
+restoreState();
+loadSites();
+
+</script>
+</body>
+</html>
