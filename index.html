@@ -14,7 +14,7 @@ select { background: white; color: #333; }
 button { background: darkred; color: white; cursor: pointer; font-size: 15px; }
 button:hover { background: #a00; }
 button:disabled { background: #888; cursor: not-allowed; }
-.hidden { display: none; }
+.hidden { display: none !important; }
 .error { color: #ff8080; margin: 8px auto; max-width: 400px; }
 .status { color: #80ff80; margin: 8px auto; max-width: 400px; }
 label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; font-size: 13px; color: #ccc; padding-left: 4px; }
@@ -26,7 +26,7 @@ label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; 
 .search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 0 0 6px 6px; max-height: 220px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
 .search-option { padding: 13px 12px; color: #333; cursor: pointer; text-align: left; font-size: 15px; border-bottom: 1px solid #eee; }
 .search-option:last-child { border-bottom: none; }
-.search-option:active, .search-option.highlighted { background: #f0f0f0; }
+.search-option:active { background: #f0f0f0; }
 </style>
 </head>
 
@@ -54,16 +54,23 @@ label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; 
   <!-- Clock In -->
   <div id="clockInDiv" class="section-box">
     <label for="workType">Work Type</label>
-    <select id="workType">
+    <select id="workType" onchange="updateWorkTypeUI('clockIn')">
       <option>Inspection</option>
       <option>Service</option>
       <option>Install</option>
       <option>Office</option>
     </select>
-    <label for="siteName">Site Name</label>
-    <div class="search-select-wrapper">
-      <input id="siteName" placeholder="Search sites..." autocomplete="off">
+
+    <!-- Site name — shown/hidden based on work type -->
+    <label id="siteNameLabel">Site Name</label>
+    <!-- Inspection / Service: plain text -->
+    <input id="siteNameText" placeholder="Enter site name..." autocomplete="off">
+    <!-- Install: searchable dropdown -->
+    <div class="search-select-wrapper hidden" id="siteNameWrapper">
+      <input id="siteNameSearch" placeholder="Search sites..." autocomplete="off">
     </div>
+    <!-- Office: nothing shown -->
+
     <button onclick="clockIn()" id="clockInBtn">Clock In</button>
     <div id="clockInError" class="error hidden"></div>
   </div>
@@ -101,16 +108,23 @@ label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; 
     <label for="odoEnd">Odometer End (miles)</label>
     <input id="odoEnd" type="number" placeholder="0000">
     <label for="arrivalWorkType">Work Type</label>
-    <select id="arrivalWorkType">
+    <select id="arrivalWorkType" onchange="updateWorkTypeUI('arrival')">
       <option>Inspection</option>
       <option>Service</option>
       <option>Install</option>
       <option>Office</option>
     </select>
-    <label for="arrivalSiteName">Site Name</label>
-    <div class="search-select-wrapper">
-      <input id="arrivalSiteName" placeholder="Search sites..." autocomplete="off">
+
+    <!-- Site name — shown/hidden based on work type -->
+    <label id="arrivalSiteNameLabel">Site Name</label>
+    <!-- Inspection / Service: plain text -->
+    <input id="arrivalSiteNameText" placeholder="Enter site name..." autocomplete="off">
+    <!-- Install: searchable dropdown -->
+    <div class="search-select-wrapper hidden" id="arrivalSiteNameWrapper">
+      <input id="arrivalSiteNameSearch" placeholder="Search sites..." autocomplete="off">
     </div>
+    <!-- Office: nothing shown -->
+
     <button onclick="arriveAtSite()">Start Work</button>
     <div id="arrivalError" class="error hidden"></div>
   </div>
@@ -174,13 +188,13 @@ const ALL_DIVS = ["clockInDiv", "workingDiv", "travelDiv", "travelingDiv", "arri
 
 function showOnly(stateName) {
   const map = {
-    clockIn: "clockInDiv",
-    working: "workingDiv",
-    travel: "travelDiv",
+    clockIn:   "clockInDiv",
+    working:   "workingDiv",
+    travel:    "travelDiv",
     traveling: "travelingDiv",
-    arrival: "arrivalDiv",
-    lunch: "lunchDiv",
-    clockOut: "clockOutDiv"
+    arrival:   "arrivalDiv",
+    lunch:     "lunchDiv",
+    clockOut:  "clockOutDiv"
   };
   ALL_DIVS.forEach(id => document.getElementById(id).classList.add("hidden"));
   const target = map[stateName];
@@ -204,6 +218,61 @@ function setBtn(id, disabled, text) {
   if (!btn) return;
   btn.disabled = disabled;
   if (text) btn.innerText = text;
+}
+
+// --- Work type UI ---
+// Controls which site name input is shown based on selected work type
+function updateWorkTypeUI(context) {
+  const isArrival = context === "arrival";
+  const wt        = document.getElementById(isArrival ? "arrivalWorkType" : "workType").value;
+  const label     = document.getElementById(isArrival ? "arrivalSiteNameLabel" : "siteNameLabel");
+  const textInput = document.getElementById(isArrival ? "arrivalSiteNameText" : "siteNameText");
+  const wrapper   = document.getElementById(isArrival ? "arrivalSiteNameWrapper" : "siteNameWrapper");
+  const search    = document.getElementById(isArrival ? "arrivalSiteNameSearch" : "siteNameSearch");
+
+  // Clear values when switching
+  textInput.value = "";
+  if (search) search.value = "";
+
+  if (wt === "Office") {
+    label.classList.add("hidden");
+    textInput.classList.add("hidden");
+    wrapper.classList.add("hidden");
+  } else if (wt === "Install") {
+    label.classList.remove("hidden");
+    textInput.classList.add("hidden");
+    wrapper.classList.remove("hidden");
+  } else {
+    // Inspection or Service — plain text
+    label.classList.remove("hidden");
+    textInput.classList.remove("hidden");
+    wrapper.classList.add("hidden");
+  }
+}
+
+// Get the site name value for a given context based on current work type
+function getSiteName(context) {
+  const isArrival = context === "arrival";
+  const wt = document.getElementById(isArrival ? "arrivalWorkType" : "workType").value;
+
+  if (wt === "Office") return "Office";
+
+  if (wt === "Install") {
+    const search = document.getElementById(isArrival ? "arrivalSiteNameSearch" : "siteNameSearch");
+    return search ? search.value.trim() : "";
+  }
+
+  // Inspection or Service
+  return document.getElementById(isArrival ? "arrivalSiteNameText" : "siteNameText").value.trim();
+}
+
+// Clear site name inputs for a context
+function clearSiteName(context) {
+  const isArrival = context === "arrival";
+  const textInput = document.getElementById(isArrival ? "arrivalSiteNameText" : "siteNameText");
+  const search    = document.getElementById(isArrival ? "arrivalSiteNameSearch" : "siteNameSearch");
+  if (textInput) textInput.value = "";
+  if (search) search.value = "";
 }
 
 // --- GPS wrapper ---
@@ -232,6 +301,7 @@ function api(params) {
 // --- Searchable dropdown ---
 function setupSearchSelect(inputId) {
   const input = document.getElementById(inputId);
+  if (!input) return;
   const wrapper = input.parentElement;
 
   const dropdown = document.createElement("div");
@@ -263,7 +333,6 @@ function setupSearchSelect(inputId) {
   input.addEventListener("blur", () => {
     setTimeout(() => {
       dropdown.classList.add("hidden");
-      // Clear if typed value not in list
       if (input.value && !sitesData.includes(input.value)) {
         input.value = "";
       }
@@ -277,9 +346,12 @@ function loadSites() {
     .then(d => {
       if (d.sites) {
         sitesData = d.sites;
-        setupSearchSelect("siteName");
+        setupSearchSelect("siteNameSearch");
+        setupSearchSelect("arrivalSiteNameSearch");
         setupSearchSelect("destination");
-        setupSearchSelect("arrivalSiteName");
+        // Set initial UI state for both forms
+        updateWorkTypeUI("clockIn");
+        updateWorkTypeUI("arrival");
       }
     })
     .catch(() => {});
@@ -312,13 +384,9 @@ function login() {
           const statusText = s.workType && s.siteName ? s.workType + " — " + s.siteName : "";
           document.getElementById("workingStatus").innerText = statusText;
 
-          if (s.type === "LUNCH") {
-            showOnly("lunch");
-          } else if (s.type === "TRAVEL") {
-            showOnly("traveling");
-          } else {
-            showOnly("working");
-          }
+          if (s.type === "LUNCH")        showOnly("lunch");
+          else if (s.type === "TRAVEL")  showOnly("traveling");
+          else                           showOnly("working");
         } else {
           showOnly("clockIn");
         }
@@ -334,13 +402,13 @@ function login() {
 function clockIn() {
   hideError("clockInError");
   const workType = document.getElementById("workType").value;
-  const siteName = document.getElementById("siteName").value.trim();
+  const siteName = getSiteName("clockIn");
 
-  if (!siteName) {
-    showError("clockInError", "Please select a site name.");
+  if (workType !== "Office" && !siteName) {
+    showError("clockInError", "Please enter a site name.");
     return;
   }
-  if (!sitesData.includes(siteName)) {
+  if (workType === "Install" && !sitesData.includes(siteName)) {
     showError("clockInError", "Please select a valid site from the list.");
     return;
   }
@@ -352,7 +420,7 @@ function clockIn() {
     .then(d => {
       if (d.success) {
         document.getElementById("workingStatus").innerText = workType + " — " + siteName;
-        document.getElementById("siteName").value = "";
+        clearSiteName("clockIn");
         showOnly("working");
       } else {
         showError("clockInError", "Clock in failed. Please try again.");
@@ -363,17 +431,12 @@ function clockIn() {
 }
 
 // --- Travel ---
-function showTravel() {
-  showOnly("travel");
-}
-
-function cancelTravel() {
-  showOnly("working");
-}
+function showTravel() { showOnly("travel"); }
+function cancelTravel() { showOnly("working"); }
 
 function startTravel() {
   hideError("travelError");
-  const destination = document.getElementById("destination").value.trim();
+  const destination  = document.getElementById("destination").value.trim();
   const odometerStart = document.getElementById("odoStart").value;
 
   if (!destination) {
@@ -406,25 +469,23 @@ function startTravel() {
     .catch(err => showError("travelError", err));
 }
 
-function showArrival() {
-  showOnly("arrival");
-}
+function showArrival() { showOnly("arrival"); }
 
 function arriveAtSite() {
   hideError("arrivalError");
   const odometerEnd = document.getElementById("odoEnd").value;
-  const workType = document.getElementById("arrivalWorkType").value;
-  const siteName = document.getElementById("arrivalSiteName").value.trim();
+  const workType    = document.getElementById("arrivalWorkType").value;
+  const siteName    = getSiteName("arrival");
 
   if (!odometerEnd) {
     showError("arrivalError", "Please enter odometer end reading.");
     return;
   }
-  if (!siteName) {
-    showError("arrivalError", "Please select a site name.");
+  if (workType !== "Office" && !siteName) {
+    showError("arrivalError", "Please enter a site name.");
     return;
   }
-  if (!sitesData.includes(siteName)) {
+  if (workType === "Install" && !sitesData.includes(siteName)) {
     showError("arrivalError", "Please select a valid site from the list.");
     return;
   }
@@ -443,7 +504,7 @@ function arriveAtSite() {
       if (d.success) {
         document.getElementById("workingStatus").innerText = workType + " — " + siteName;
         document.getElementById("odoEnd").value = "";
-        document.getElementById("arrivalSiteName").value = "";
+        clearSiteName("arrival");
         travelDepartureGPS = "";
         showOnly("working");
       } else {
@@ -487,13 +548,8 @@ function endLunch() {
 }
 
 // --- Clock Out ---
-function confirmClockOut() {
-  showOnly("clockOut");
-}
-
-function cancelClockOut() {
-  showOnly("working");
-}
+function confirmClockOut() { showOnly("clockOut"); }
+function cancelClockOut()  { showOnly("working"); }
 
 function clockOut() {
   getGPS()
@@ -516,6 +572,8 @@ function clockOut() {
 // --- Init ---
 restoreState();
 loadSites();
+updateWorkTypeUI("clockIn");
+updateWorkTypeUI("arrival");
 
 </script>
 </body>
