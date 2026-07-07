@@ -285,7 +285,7 @@ function getGPS() {
 }
 
 // --- API wrapper ---
-function api(params) {
+function api(params, retries = 2) {
   return fetch(SCRIPT_URL, {
     method: "POST",
     body: new URLSearchParams(params)
@@ -293,6 +293,13 @@ function api(params) {
   .then(r => {
     if (!r.ok) throw new Error("Server error: " + r.status);
     return r.json();
+  })
+  .catch(err => {
+    if (retries > 0) {
+      return new Promise(resolve => setTimeout(resolve, 1500))
+        .then(() => api(params, retries - 1));
+    }
+    throw err;
   });
 }
 
