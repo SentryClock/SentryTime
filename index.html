@@ -2,504 +2,711 @@
 <html>
 <head>
 <title>Sentry Security</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
-* { box-sizing: border-box; }
-body { font-family: Arial; background: #444; color: white; text-align: center; margin: 0; padding: 20px; }
-h2 { margin-bottom: 20px; }
-h3 { margin-bottom: 16px; }
-input, select, button { padding: 12px; margin: 6px auto; width: 90%; max-width: 400px; display: block; border-radius: 4px; border: none; font-size: 15px; }
-select { background: white; color: #333; }
-button { background: darkred; color: white; cursor: pointer; font-size: 15px; }
-button:hover { background: #a00; }
-button:disabled { background: #888; cursor: not-allowed; }
-.hidden { display: none !important; }
-.error { color: #ff8080; margin: 8px auto; max-width: 400px; }
-.status { color: #80ff80; margin: 8px auto; max-width: 400px; }
-label { display: block; text-align: left; max-width: 400px; margin: 4px auto 0; font-size: 13px; color: #ccc; padding-left: 4px; }
-.section-box { background: #555; border-radius: 8px; padding: 16px; max-width: 440px; margin: 12px auto; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  background: #111;
+  color: #fff;
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Header */
+.app-header {
+  background: #1a1a1a;
+  border-bottom: 1px solid #2a2a2a;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.app-header-title { font-size: 17px; font-weight: 700; letter-spacing: 0.3px; }
+.app-header-user  { font-size: 13px; color: #888; }
+
+/* Page body */
+.page { padding: 20px 16px 40px; max-width: 480px; margin: 0 auto; }
+
+/* Cards */
+.card {
+  background: #1e1e1e;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; margin: 0 0 6px; }
+.card-value { font-size: 20px; font-weight: 600; margin: 0; line-height: 1.3; }
+.card-sub   { font-size: 14px; color: #777; margin: 5px 0 0; }
+
+/* Divider */
+.divider { border: none; border-top: 1px solid #2a2a2a; margin: 16px 0; }
+
+/* Form fields */
+.field { margin-bottom: 14px; }
+.field > label {
+  display: block;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 7px;
+  font-weight: 500;
+}
+.field input,
+.field select {
+  width: 100%;
+  padding: 15px 16px;
+  background: #1e1e1e;
+  border: 1.5px solid #2e2e2e;
+  border-radius: 11px;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  margin: 0;
+}
+.field input:focus,
+.field select:focus { border-color: #c0392b; }
+.field input::placeholder { color: #444; }
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23666' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  background-color: #1e1e1e;
+  padding-right: 40px;
+}
+.field select option { background: #1e1e1e; }
+
+/* Buttons */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+  text-align: center;
+  -webkit-appearance: none;
+  transition: opacity 0.1s;
+}
+.btn:active  { opacity: 0.75; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-red    { background: #c0392b; color: #fff; }
+.btn-gray   { background: #2a2a2a; color: #ddd; }
+.btn-green  { background: #1a4a2a; color: #55cc88; }
+.btn-ghost  { background: transparent; color: #666; border: 1.5px solid #2e2e2e; }
+.btn-danger-ghost { background: transparent; color: #c0392b; border: 1.5px solid #4a1a1a; }
+.btn-sm     { padding: 13px 16px; font-size: 15px; }
+
+/* 2-up button row */
+.btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.btn-pair .btn { margin: 0; }
+
+/* Error / info text */
+.msg-error { color: #e74c3c; font-size: 14px; margin: 6px 0 4px; }
+
+/* Loading overlay */
+.overlay-loading {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.spinner {
+  width: 42px; height: 42px;
+  border: 3px solid rgba(255,255,255,0.12);
+  border-top-color: #c0392b;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-label { margin-top: 18px; font-size: 15px; color: #999; }
+
+/* Confirm modal */
+.overlay-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-card {
+  background: #1e1e1e;
+  border-radius: 20px;
+  padding: 24px 20px 20px;
+  width: 100%;
+  max-width: 440px;
+}
+.modal-card h3 { margin: 0 0 8px; font-size: 19px; }
+.modal-card p  { margin: 0 0 22px; color: #888; font-size: 15px; line-height: 1.5; }
 
 /* Searchable dropdown */
-.search-select-wrapper { position: relative; width: 90%; max-width: 400px; margin: 6px auto; display: block; }
-.search-select-wrapper input { width: 100%; margin: 0; }
-.search-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: white; border-radius: 0 0 6px 6px; max-height: 220px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-.search-option { padding: 13px 12px; color: #333; cursor: pointer; text-align: left; font-size: 15px; border-bottom: 1px solid #eee; }
+.search-wrap { position: relative; }
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 6px); left: 0; right: 0;
+  background: #252525;
+  border: 1px solid #333;
+  border-radius: 12px;
+  max-height: 210px;
+  overflow-y: auto;
+  z-index: 500;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+.search-option { padding: 14px 16px; color: #ddd; cursor: pointer; font-size: 15px; border-bottom: 1px solid #2e2e2e; }
 .search-option:last-child { border-bottom: none; }
-.search-option:active { background: #f0f0f0; }
+.search-option:active { background: #2e2e2e; }
+
+/* Log tabs */
+.tab-bar { display: flex; background: #1a1a1a; border-radius: 10px; padding: 3px; margin-bottom: 18px; }
+.tab-btn { flex: 1; padding: 10px; background: transparent; border: none; color: #666; font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; }
+.tab-btn.active { background: #2a2a2a; color: #fff; }
+
+/* Log entries */
+.log-entry { padding: 13px 0; border-bottom: 1px solid #222; }
+.log-entry:last-child { border-bottom: none; }
+.log-entry-type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #666; margin-bottom: 3px; }
+.log-entry-main { font-size: 16px; font-weight: 500; margin-bottom: 2px; }
+.log-entry-sub  { font-size: 13px; color: #666; }
+.log-date-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #c0392b; margin: 18px 0 8px; }
+.log-empty { text-align: center; padding: 40px 0; color: #444; font-size: 15px; }
+
+.hidden { display: none !important; }
 </style>
 </head>
-
 <body>
 
-<h2>Sentry Security</h2>
+<!-- Loading overlay -->
+<div id="loadingOverlay" class="overlay-loading hidden">
+  <div class="spinner"></div>
+  <div class="loading-label" id="loadingLabel">Loading...</div>
+</div>
 
-<!-- LOGIN -->
-<div id="loginDiv">
-  <div class="section-box">
-    <label for="username">Username</label>
-    <input id="username" placeholder="Username" autocomplete="username">
-    <label for="password">Password</label>
-    <input id="password" type="password" placeholder="Password" autocomplete="current-password">
-    <button onclick="login()" id="loginBtn">Login</button>
-    <div id="loginError" class="error hidden"></div>
+<!-- Confirm modal -->
+<div id="confirmOverlay" class="overlay-modal hidden">
+  <div class="modal-card">
+    <h3 id="confirmTitle"></h3>
+    <p id="confirmMsg"></p>
+    <button id="confirmYes" class="btn btn-danger-ghost">Yes, Cancel It</button>
+    <button class="btn btn-ghost" onclick="closeConfirm()">No, Keep Going</button>
   </div>
 </div>
 
-<!-- MAIN APP -->
-<div id="appDiv" class="hidden">
-
-  <h3 id="welcome"></h3>
-
-  <!-- Clock In -->
-  <div id="clockInDiv" class="section-box">
-    <label for="workType">Work Type</label>
-    <select id="workType" onchange="updateWorkTypeUI('clockIn')">
-      <option>Inspection</option>
-      <option>Service</option>
-      <option>Install</option>
-      <option>Office</option>
-    </select>
-
-    <!-- Site name — shown/hidden based on work type -->
-    <label id="siteNameLabel">Site Name</label>
-    <!-- Inspection / Service: plain text -->
-    <input id="siteNameText" placeholder="Enter site name..." autocomplete="off">
-    <!-- Install: searchable dropdown -->
-    <div class="search-select-wrapper hidden" id="siteNameWrapper">
-      <input id="siteNameSearch" placeholder="Search sites..." autocomplete="off">
-    </div>
-    <!-- Office: nothing shown -->
-
-    <button onclick="clockIn()" id="clockInBtn">Clock In</button>
-    <div id="clockInError" class="error hidden"></div>
-  </div>
-
-  <!-- Working controls -->
-  <div id="workingDiv" class="hidden section-box">
-    <div id="workingStatus" class="status"></div>
-    <button onclick="showTravel()">Travel to New Site</button>
-    <button onclick="startLunch()">Start Lunch</button>
-    <button onclick="confirmClockOut()">Clock Out</button>
-  </div>
-
-  <!-- Travel form -->
-  <div id="travelDiv" class="hidden section-box">
-    <label for="destination">Destination / Site Name</label>
-    <input id="destination" placeholder="Enter destination..." autocomplete="off">
-    <label for="odoStart">Odometer Start (miles)</label>
-    <input id="odoStart" type="number" placeholder="0000">
-    <button onclick="startTravel()">Start Travel</button>
-    <button onclick="cancelTravel()">Cancel</button>
-    <div id="travelError" class="error hidden"></div>
-  </div>
-
-  <!-- Traveling (en route) -->
-  <div id="travelingDiv" class="hidden section-box">
-    <div class="status">Traveling...</div>
-    <button onclick="showArrival()">Arrive at Site</button>
-    <button onclick="startLunch()">Start Lunch</button>
-  </div>
-
-  <!-- Arrival form -->
-  <div id="arrivalDiv" class="hidden section-box">
-    <label for="odoEnd">Odometer End (miles)</label>
-    <input id="odoEnd" type="number" placeholder="0000">
-    <label for="arrivalWorkType">Work Type</label>
-    <select id="arrivalWorkType" onchange="updateWorkTypeUI('arrival')">
-      <option>Inspection</option>
-      <option>Service</option>
-      <option>Install</option>
-      <option>Office</option>
-    </select>
-
-    <!-- Site name — shown/hidden based on work type -->
-    <label id="arrivalSiteNameLabel">Site Name</label>
-    <!-- Inspection / Service: plain text -->
-    <input id="arrivalSiteNameText" placeholder="Enter site name..." autocomplete="off">
-    <!-- Install: searchable dropdown -->
-    <div class="search-select-wrapper hidden" id="arrivalSiteNameWrapper">
-      <input id="arrivalSiteNameSearch" placeholder="Search sites..." autocomplete="off">
-    </div>
-    <!-- Office: nothing shown -->
-
-    <button onclick="arriveAtSite()">Start Work</button>
-    <div id="arrivalError" class="error hidden"></div>
-  </div>
-
-  <!-- Lunch -->
-  <div id="lunchDiv" class="hidden section-box">
-    <div class="status">On Lunch Break</div>
-    <button onclick="endLunch()">End Lunch</button>
-  </div>
-
-  <!-- Clock-out confirmation -->
-  <div id="clockOutDiv" class="hidden section-box">
-    <p>Are you sure you want to clock out?</p>
-    <button onclick="clockOut()">Yes, Clock Out</button>
-    <button onclick="cancelClockOut()">Cancel</button>
-  </div>
-
+<!-- Header -->
+<div class="app-header">
+  <span class="app-header-title">Sentry Security</span>
+  <span class="app-header-user" id="headerUser"></span>
 </div>
+
+<div class="page">
+
+  <!-- LOGIN -->
+  <div id="loginDiv">
+    <div style="padding:16px 0 24px;">
+      <div style="font-size:22px;font-weight:700;margin-bottom:6px;">Sign In</div>
+      <div style="font-size:14px;color:#666;">Enter your credentials to continue</div>
+    </div>
+    <div class="field">
+      <label>Username</label>
+      <input id="username" placeholder="Enter username" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="password" type="password" placeholder="Enter password" autocomplete="current-password">
+    </div>
+    <button onclick="login()" id="loginBtn" class="btn btn-red">Sign In</button>
+    <div id="loginError" class="msg-error hidden"></div>
+  </div>
+
+  <!-- APP (shown after login) -->
+  <div id="appDiv" class="hidden">
+
+    <!-- HOME -->
+    <div id="homeDiv" class="hidden">
+      <div class="card" style="margin-top:8px;margin-bottom:20px;">
+        <p class="card-label">Welcome back</p>
+        <p class="card-value" id="homeWelcome"></p>
+        <p class="card-sub">What would you like to do?</p>
+      </div>
+      <button onclick="showOnly('clockIn')" class="btn btn-red">Clock In</button>
+      <button onclick="viewLog()" class="btn btn-gray">View My Log</button>
+    </div>
+
+    <!-- CLOCK IN -->
+    <div id="clockInDiv" class="hidden">
+      <div class="card" style="margin-bottom:20px;">
+        <p class="card-label">Clock In</p>
+        <p class="card-value">Start your shift</p>
+      </div>
+      <div class="field">
+        <label>Work Type</label>
+        <select id="workType" onchange="updateWorkTypeUI('clockIn')">
+          <option>Inspection</option>
+          <option>Service</option>
+          <option>Install</option>
+          <option>Office</option>
+        </select>
+      </div>
+      <div id="siteNameField" class="field">
+        <label>Site Name</label>
+        <input id="siteNameText" placeholder="Enter site name..." autocomplete="off">
+        <div class="search-wrap hidden" id="siteNameWrapper">
+          <input id="siteNameSearch" placeholder="Search sites..." autocomplete="off">
+        </div>
+      </div>
+      <button onclick="clockIn()" class="btn btn-red">Clock In</button>
+      <button onclick="showOnly('home')" class="btn btn-ghost btn-sm">Back</button>
+      <div id="clockInError" class="msg-error hidden"></div>
+    </div>
+
+    <!-- WORKING -->
+    <div id="workingDiv" class="hidden">
+      <div class="card" style="margin-bottom:20px;">
+        <p class="card-label">Currently Working</p>
+        <p class="card-value" id="workingStatus">—</p>
+      </div>
+      <div class="btn-pair">
+        <button onclick="showTravel()" class="btn btn-gray">Travel</button>
+        <button onclick="startLunch()" class="btn btn-gray">Lunch</button>
+      </div>
+      <button onclick="confirmClockOut()" class="btn btn-red">Clock Out</button>
+      <hr class="divider">
+      <button onclick="viewLog()" class="btn btn-ghost btn-sm">View My Log</button>
+      <button onclick="askCancel('working')" class="btn btn-danger-ghost btn-sm cancel-btn" id="cancelWorkBtn">Cancel Clock-In</button>
+    </div>
+
+    <!-- TRAVEL FORM -->
+    <div id="travelDiv" class="hidden">
+      <div class="card" style="margin-bottom:20px;">
+        <p class="card-label">New Travel</p>
+        <p class="card-value">Where are you headed?</p>
+      </div>
+      <div class="field">
+        <label>Destination</label>
+        <input id="destination" placeholder="Enter destination..." autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Odometer Start (miles)</label>
+        <input id="odoStart" type="number" placeholder="00000">
+      </div>
+      <button onclick="startTravel()" class="btn btn-red">Start Travel</button>
+      <button onclick="showOnly('working')" class="btn btn-ghost btn-sm">Cancel</button>
+      <div id="travelError" class="msg-error hidden"></div>
+    </div>
+
+    <!-- TRAVELING -->
+    <div id="travelingDiv" class="hidden">
+      <div class="card" style="margin-bottom:20px;">
+        <p class="card-label">In Transit</p>
+        <p class="card-value">Traveling</p>
+        <p class="card-sub" id="travelDestLabel"></p>
+      </div>
+      <button onclick="showOnly('arrival')" class="btn btn-red">Arrive at Site</button>
+      <button onclick="startLunch()" class="btn btn-gray">Start Lunch</button>
+      <button onclick="askCancel('traveling')" class="btn btn-danger-ghost btn-sm cancel-btn">Cancel Travel</button>
+    </div>
+
+    <!-- ARRIVAL FORM -->
+    <div id="arrivalDiv" class="hidden">
+      <div class="card" style="margin-bottom:20px;">
+        <p class="card-label">Arrival</p>
+        <p class="card-value">Record your arrival</p>
+      </div>
+      <div class="field">
+        <label>Odometer End (miles)</label>
+        <input id="odoEnd" type="number" placeholder="00000">
+      </div>
+      <div class="field">
+        <label>Work Type</label>
+        <select id="arrivalWorkType" onchange="updateWorkTypeUI('arrival')">
+          <option>Inspection</option>
+          <option>Service</option>
+          <option>Install</option>
+          <option>Office</option>
+        </select>
+      </div>
+      <div id="arrivalSiteNameField" class="field">
+        <label>Site Name</label>
+        <input id="arrivalSiteNameText" placeholder="Enter site name..." autocomplete="off">
+        <div class="search-wrap hidden" id="arrivalSiteNameWrapper">
+          <input id="arrivalSiteNameSearch" placeholder="Search sites..." autocomplete="off">
+        </div>
+      </div>
+      <button onclick="arriveAtSite()" class="btn btn-red">Start Work</button>
+      <button onclick="showOnly('traveling')" class="btn btn-ghost btn-sm">Back</button>
+      <div id="arrivalError" class="msg-error hidden"></div>
+    </div>
+
+    <!-- LUNCH -->
+    <div id="lunchDiv" class="hidden">
+      <div class="card" style="margin-bottom:20px;">
+        <p class="card-label">On Break</p>
+        <p class="card-value">Lunch Break</p>
+        <p class="card-sub">Enjoy your lunch</p>
+      </div>
+      <button onclick="endLunch()" class="btn btn-red">End Lunch</button>
+      <button onclick="askCancel('lunch')" class="btn btn-danger-ghost btn-sm cancel-btn">Cancel Lunch</button>
+    </div>
+
+    <!-- CLOCK OUT CONFIRM -->
+    <div id="clockOutDiv" class="hidden">
+      <div class="card" style="margin-bottom:20px;">
+        <p class="card-label">Clock Out</p>
+        <p class="card-value" style="font-size:17px;font-weight:400;color:#aaa;">Are you sure you want to end your shift?</p>
+      </div>
+      <button onclick="clockOut()" class="btn btn-red">Yes, Clock Out</button>
+      <button onclick="showOnly('working')" class="btn btn-ghost">Cancel</button>
+    </div>
+
+    <!-- LOG VIEW -->
+    <div id="logDiv" class="hidden">
+      <div class="tab-bar">
+        <button class="tab-btn active" id="tabToday" onclick="showLogTab('today')">Today</button>
+        <button class="tab-btn" id="tabHistory" onclick="showLogTab('history')">History</button>
+      </div>
+      <div id="logToday"></div>
+      <div id="logHistory" class="hidden"></div>
+      <button onclick="closeLog()" class="btn btn-ghost btn-sm" style="margin-top:18px;">Back</button>
+    </div>
+
+  </div><!-- /appDiv -->
+</div><!-- /page -->
 
 <script>
-
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbymVAEfac2OBBZ9A6-IHWJzezF3vQdgFGzwVuHS6WVs5TCI9NBXuTvNnyCuY5AKMWBK/exec";
+const CANCEL_WINDOW_MS = 5 * 60 * 1000;
 
-// --- State ---
-let currentUser = "";
-let currentState = "clockIn";
+let currentUser        = "";
+let currentState       = "home";
 let travelDepartureGPS = "";
-let sitesData = [];
+let sitesData          = [];
+let isProcessing       = false;
+let preLogState        = "home";
 
-// --- Persistence ---
+// ─── Persistence ─────────────────────────────────────────────────────────────
 function saveState() {
-  sessionStorage.setItem("sentry_user", currentUser);
-  sessionStorage.setItem("sentry_state", currentState);
-  sessionStorage.setItem("sentry_workStatus", document.getElementById("workingStatus").innerText);
+  sessionStorage.setItem("sentry_user",   currentUser);
+  sessionStorage.setItem("sentry_state",  currentState === "log" ? preLogState : currentState);
+  sessionStorage.setItem("sentry_status", document.getElementById("workingStatus").innerText);
+  sessionStorage.setItem("sentry_dest",   document.getElementById("travelDestLabel").innerText);
 }
 
 function restoreState() {
-  const user = sessionStorage.getItem("sentry_user");
-  const state = sessionStorage.getItem("sentry_state");
-  const status = sessionStorage.getItem("sentry_workStatus") || "";
-
-  if (!user || !state || state === "clockIn") return;
-
+  const user   = sessionStorage.getItem("sentry_user");
+  const state  = sessionStorage.getItem("sentry_state");
+  const status = sessionStorage.getItem("sentry_status") || "";
+  const dest   = sessionStorage.getItem("sentry_dest")   || "";
+  if (!user || !state) return;
   currentUser = user;
-  currentState = state;
-  document.getElementById("welcome").innerText = "Welcome " + currentUser;
-  document.getElementById("workingStatus").innerText = status;
+  document.getElementById("headerUser").innerText        = user;
+  document.getElementById("homeWelcome").innerText       = user;
+  document.getElementById("workingStatus").innerText     = status;
+  document.getElementById("travelDestLabel").innerText   = dest;
   document.getElementById("loginDiv").classList.add("hidden");
   document.getElementById("appDiv").classList.remove("hidden");
   showOnly(state);
 }
 
-function clearState() {
-  sessionStorage.removeItem("sentry_user");
-  sessionStorage.removeItem("sentry_state");
-  sessionStorage.removeItem("sentry_workStatus");
+function clearUserSession() {
+  ["sentry_user","sentry_state","sentry_status","sentry_dest","sentry_cancelDeadline"]
+    .forEach(k => sessionStorage.removeItem(k));
 }
 
-// --- UI helpers ---
-const ALL_DIVS = ["clockInDiv", "workingDiv", "travelDiv", "travelingDiv", "arrivalDiv", "lunchDiv", "clockOutDiv"];
+// ─── Cancel window ────────────────────────────────────────────────────────────
+function saveCancelDeadline() {
+  sessionStorage.setItem("sentry_cancelDeadline", String(Date.now() + CANCEL_WINDOW_MS));
+}
+function clearCancelDeadline() {
+  sessionStorage.removeItem("sentry_cancelDeadline");
+}
+function refreshCancelButtons() {
+  const deadline = parseInt(sessionStorage.getItem("sentry_cancelDeadline") || "0");
+  const ok = deadline > 0 && Date.now() < deadline;
+  document.querySelectorAll(".cancel-btn").forEach(b => { b.style.display = ok ? "" : "none"; });
+  if (ok) setTimeout(refreshCancelButtons, Math.min(deadline - Date.now() + 300, 30000));
+}
 
-function showOnly(stateName) {
+// ─── Screens ──────────────────────────────────────────────────────────────────
+const ALL_DIVS = ["homeDiv","clockInDiv","workingDiv","travelDiv","travelingDiv","arrivalDiv","lunchDiv","clockOutDiv","logDiv"];
+
+function showOnly(name) {
   const map = {
-    clockIn:   "clockInDiv",
-    working:   "workingDiv",
-    travel:    "travelDiv",
-    traveling: "travelingDiv",
-    arrival:   "arrivalDiv",
-    lunch:     "lunchDiv",
-    clockOut:  "clockOutDiv"
+    home:"homeDiv", clockIn:"clockInDiv", working:"workingDiv", travel:"travelDiv",
+    traveling:"travelingDiv", arrival:"arrivalDiv", lunch:"lunchDiv",
+    clockOut:"clockOutDiv", log:"logDiv"
   };
   ALL_DIVS.forEach(id => document.getElementById(id).classList.add("hidden"));
-  const target = map[stateName];
-  if (target) document.getElementById(target).classList.remove("hidden");
-  currentState = stateName;
+  if (map[name]) document.getElementById(map[name]).classList.remove("hidden");
+  currentState = name;
   saveState();
+  refreshCancelButtons();
 }
 
-function showError(id, msg) {
-  const el = document.getElementById(id);
-  el.innerText = msg;
-  el.classList.remove("hidden");
+function showError(id, msg) { const e=document.getElementById(id); e.innerText=msg; e.classList.remove("hidden"); }
+function hideError(id)      { document.getElementById(id).classList.add("hidden"); }
+
+// ─── Loading overlay ──────────────────────────────────────────────────────────
+function load(msg) {
+  document.getElementById("loadingLabel").innerText = msg || "Loading...";
+  document.getElementById("loadingOverlay").classList.remove("hidden");
+  isProcessing = true;
 }
 
-function hideError(id) {
-  document.getElementById(id).classList.add("hidden");
+function unload() {
+  document.getElementById("loadingOverlay").classList.add("hidden");
+  isProcessing = false;
 }
 
-function setBtn(id, disabled, text) {
-  const btn = document.getElementById(id);
-  if (!btn) return;
-  btn.disabled = disabled;
-  if (text) btn.innerText = text;
+// ─── Confirm modal ────────────────────────────────────────────────────────────
+function askCancel(state) {
+  if (isProcessing) return;
+  const deadline = parseInt(sessionStorage.getItem("sentry_cancelDeadline") || "0");
+  if (!deadline || Date.now() >= deadline) return;
+  const titles = { working:"Cancel Clock-In?", traveling:"Cancel Travel?", lunch:"Cancel Lunch?" };
+  const msgs   = {
+    working:   "This will remove your current work entry. You'll stay signed in.",
+    traveling: "The travel entry will be removed and you'll return to working.",
+    lunch:     "The lunch entry will be removed and your previous session will resume."
+  };
+  document.getElementById("confirmTitle").innerText = titles[state] || "Cancel?";
+  document.getElementById("confirmMsg").innerText   = msgs[state]   || "Are you sure?";
+  document.getElementById("confirmYes").onclick = () => { closeConfirm(); doCancelAction(); };
+  document.getElementById("confirmOverlay").classList.remove("hidden");
 }
 
-// --- Work type UI ---
-// Controls which site name input is shown based on selected work type
-function updateWorkTypeUI(context) {
-  const isArrival = context === "arrival";
-  const wt        = document.getElementById(isArrival ? "arrivalWorkType" : "workType").value;
-  const label     = document.getElementById(isArrival ? "arrivalSiteNameLabel" : "siteNameLabel");
-  const textInput = document.getElementById(isArrival ? "arrivalSiteNameText" : "siteNameText");
-  const wrapper   = document.getElementById(isArrival ? "arrivalSiteNameWrapper" : "siteNameWrapper");
-  const search    = document.getElementById(isArrival ? "arrivalSiteNameSearch" : "siteNameSearch");
+function closeConfirm() { document.getElementById("confirmOverlay").classList.add("hidden"); }
 
-  // Clear values when switching
-  textInput.value = "";
-  if (search) search.value = "";
+function doCancelAction() {
+  load("Canceling...");
+  api({ action:"cancelAction", employee:currentUser })
+    .then(d => {
+      if (d.success) {
+        clearCancelDeadline();
+        if (d.resumeState === "clockIn") {
+          showOnly("clockIn");
+        } else {
+          if (d.workType && d.siteName)
+            document.getElementById("workingStatus").innerText = d.workType + " — " + d.siteName;
+          showOnly(d.resumeState);
+        }
+      } else alert("Could not cancel. Please try again.");
+    })
+    .catch(err => alert(err))
+    .finally(() => unload());
+}
 
+// ─── Work type UI ─────────────────────────────────────────────────────────────
+function updateWorkTypeUI(ctx) {
+  const isA  = ctx === "arrival";
+  const wt   = document.getElementById(isA ? "arrivalWorkType" : "workType").value;
+  const field = document.getElementById(isA ? "arrivalSiteNameField" : "siteNameField");
+  const txt  = document.getElementById(isA ? "arrivalSiteNameText" : "siteNameText");
+  const wrap = document.getElementById(isA ? "arrivalSiteNameWrapper" : "siteNameWrapper");
+  const srch = document.getElementById(isA ? "arrivalSiteNameSearch" : "siteNameSearch");
+  if (txt)  txt.value  = "";
+  if (srch) srch.value = "";
   if (wt === "Office") {
-    label.classList.add("hidden");
-    textInput.classList.add("hidden");
-    wrapper.classList.add("hidden");
+    field.classList.add("hidden");
   } else if (wt === "Install") {
-    label.classList.remove("hidden");
-    textInput.classList.add("hidden");
-    wrapper.classList.remove("hidden");
+    field.classList.remove("hidden");
+    txt.classList.add("hidden");
+    wrap.classList.remove("hidden");
   } else {
-    // Inspection or Service — plain text
-    label.classList.remove("hidden");
-    textInput.classList.remove("hidden");
-    wrapper.classList.add("hidden");
+    field.classList.remove("hidden");
+    txt.classList.remove("hidden");
+    wrap.classList.add("hidden");
   }
 }
 
-// Get the site name value for a given context based on current work type
-function getSiteName(context) {
-  const isArrival = context === "arrival";
-  const wt = document.getElementById(isArrival ? "arrivalWorkType" : "workType").value;
-
+function getSiteName(ctx) {
+  const isA = ctx === "arrival";
+  const wt  = document.getElementById(isA ? "arrivalWorkType" : "workType").value;
   if (wt === "Office") return "Office";
-
-  if (wt === "Install") {
-    const search = document.getElementById(isArrival ? "arrivalSiteNameSearch" : "siteNameSearch");
-    return search ? search.value.trim() : "";
-  }
-
-  // Inspection or Service
-  return document.getElementById(isArrival ? "arrivalSiteNameText" : "siteNameText").value.trim();
+  if (wt === "Install") { const s=document.getElementById(isA?"arrivalSiteNameSearch":"siteNameSearch"); return s?s.value.trim():""; }
+  return document.getElementById(isA ? "arrivalSiteNameText" : "siteNameText").value.trim();
 }
 
-// Clear site name inputs for a context
-function clearSiteName(context) {
-  const isArrival = context === "arrival";
-  const textInput = document.getElementById(isArrival ? "arrivalSiteNameText" : "siteNameText");
-  const search    = document.getElementById(isArrival ? "arrivalSiteNameSearch" : "siteNameSearch");
-  if (textInput) textInput.value = "";
-  if (search) search.value = "";
+function clearSiteName(ctx) {
+  const isA = ctx === "arrival";
+  const t = document.getElementById(isA ? "arrivalSiteNameText" : "siteNameText");
+  const s = document.getElementById(isA ? "arrivalSiteNameSearch" : "siteNameSearch");
+  if (t) t.value = ""; if (s) s.value = "";
 }
 
-// --- GPS wrapper ---
+// ─── GPS ──────────────────────────────────────────────────────────────────────
 function getGPS() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject("Geolocation not supported");
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej("Geolocation not supported");
     navigator.geolocation.getCurrentPosition(
-      p => resolve(p.coords.latitude + "," + p.coords.longitude),
-      () => reject("Could not get location. Please allow location access.")
+      p => res(p.coords.latitude + "," + p.coords.longitude),
+      () => rej("Could not get location. Please allow location access.")
     );
   });
 }
 
-// --- API wrapper ---
+// ─── API with retry ───────────────────────────────────────────────────────────
 function api(params, retries = 2) {
-  return fetch(SCRIPT_URL, {
-    method: "POST",
-    body: new URLSearchParams(params)
-  })
-  .then(r => {
-    if (!r.ok) throw new Error("Server error: " + r.status);
-    return r.json();
-  })
-  .catch(err => {
-    if (retries > 0) {
-      return new Promise(resolve => setTimeout(resolve, 1500))
-        .then(() => api(params, retries - 1));
-    }
-    throw err;
-  });
+  return fetch(SCRIPT_URL, { method:"POST", body: new URLSearchParams(params) })
+    .then(r => { if (!r.ok) throw new Error("Server error "+r.status); return r.json(); })
+    .catch(err => {
+      if (retries > 0) return new Promise(r => setTimeout(r, 1500)).then(() => api(params, retries-1));
+      throw err;
+    });
 }
 
-// --- Searchable dropdown ---
+// ─── Searchable dropdown ──────────────────────────────────────────────────────
 function setupSearchSelect(inputId) {
   const input = document.getElementById(inputId);
   if (!input) return;
-  const wrapper = input.parentElement;
+  const wrap = input.closest(".search-wrap");
+  if (!wrap) return;
+  const old = wrap.querySelector(".search-dropdown");
+  if (old) old.remove();
+  const dd = document.createElement("div");
+  dd.className = "search-dropdown hidden";
+  wrap.appendChild(dd);
 
-  const dropdown = document.createElement("div");
-  dropdown.className = "search-dropdown hidden";
-  wrapper.appendChild(dropdown);
-
-  function renderOptions(filter) {
-    const matches = filter
-      ? sitesData.filter(s => s.toLowerCase().includes(filter.toLowerCase()))
-      : sitesData;
-
-    dropdown.innerHTML = matches.map(s =>
-      `<div class="search-option">${s}</div>`
-    ).join("");
-
-    dropdown.classList.toggle("hidden", matches.length === 0);
-
-    dropdown.querySelectorAll(".search-option").forEach(opt => {
-      opt.addEventListener("pointerdown", e => {
-        e.preventDefault();
-        input.value = opt.innerText;
-        dropdown.classList.add("hidden");
-      });
-    });
+  function render(f) {
+    const hits = f ? sitesData.filter(s => s.toLowerCase().includes(f.toLowerCase())) : sitesData;
+    dd.innerHTML = hits.map(s => `<div class="search-option">${s}</div>`).join("");
+    dd.classList.toggle("hidden", !hits.length);
+    dd.querySelectorAll(".search-option").forEach(o => o.addEventListener("pointerdown", e => {
+      e.preventDefault(); input.value = o.innerText; dd.classList.add("hidden");
+    }));
   }
-
-  input.addEventListener("focus", () => renderOptions(input.value));
-  input.addEventListener("input", () => renderOptions(input.value));
-  input.addEventListener("blur", () => {
-    setTimeout(() => {
-      dropdown.classList.add("hidden");
-      if (input.value && !sitesData.includes(input.value)) {
-        input.value = "";
-      }
-    }, 200);
-  });
+  input.addEventListener("focus", () => render(input.value));
+  input.addEventListener("input", () => render(input.value));
+  input.addEventListener("blur",  () => setTimeout(() => {
+    dd.classList.add("hidden");
+    if (input.value && !sitesData.includes(input.value)) input.value = "";
+  }, 200));
 }
 
-// --- Sites ---
+// ─── Sites ────────────────────────────────────────────────────────────────────
 function loadSites() {
-  api({ action: "getSites" })
-    .then(d => {
-      if (d.sites) {
-        sitesData = d.sites;
-        setupSearchSelect("siteNameSearch");
-        setupSearchSelect("arrivalSiteNameSearch");
-        // Set initial UI state for both forms
-        updateWorkTypeUI("clockIn");
-        updateWorkTypeUI("arrival");
-      }
-    })
-    .catch(() => {});
+  api({ action:"getSites" }).then(d => {
+    if (d.sites) {
+      sitesData = d.sites;
+      setupSearchSelect("siteNameSearch");
+      setupSearchSelect("arrivalSiteNameSearch");
+      updateWorkTypeUI("clockIn");
+      updateWorkTypeUI("arrival");
+    }
+  }).catch(() => {});
 }
 
-// --- Login ---
+// ─── Login ────────────────────────────────────────────────────────────────────
 function login() {
+  if (isProcessing) return;
   hideError("loginError");
-  setBtn("loginBtn", true, "Logging in...");
-
   const username = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value;
+  if (!username || !password) { showError("loginError","Please enter username and password."); return; }
 
-  if (!username || !password) {
-    showError("loginError", "Please enter username and password.");
-    setBtn("loginBtn", false, "Login");
-    return;
-  }
-
-  api({ action: "login", username, password })
+  load("Signing in...");
+  api({ action:"login", username, password })
     .then(d => {
       if (d.success) {
         currentUser = d.name;
+        document.getElementById("headerUser").innerText  = d.name;
+        document.getElementById("homeWelcome").innerText = d.name;
         document.getElementById("loginDiv").classList.add("hidden");
         document.getElementById("appDiv").classList.remove("hidden");
-        document.getElementById("welcome").innerText = "Welcome " + currentUser;
-
         if (d.activeSession) {
           const s = d.activeSession;
-          const statusText = s.workType && s.siteName ? s.workType + " — " + s.siteName : "";
-          document.getElementById("workingStatus").innerText = statusText;
-
-          if (s.type === "LUNCH")        showOnly("lunch");
-          else if (s.type === "TRAVEL")  showOnly("traveling");
-          else                           showOnly("working");
+          document.getElementById("workingStatus").innerText = s.workType && s.siteName ? s.workType + " — " + s.siteName : "";
+          if (s.type === "LUNCH")       showOnly("lunch");
+          else if (s.type === "TRAVEL") showOnly("traveling");
+          else                          showOnly("working");
         } else {
-          showOnly("clockIn");
+          showOnly("home");
         }
-      } else {
-        showError("loginError", "Invalid username or password.");
-      }
+      } else showError("loginError","Invalid username or password.");
     })
-    .catch(() => showError("loginError", "Connection error. Please try again."))
-    .finally(() => setBtn("loginBtn", false, "Login"));
+    .catch(() => showError("loginError","Connection error. Please try again."))
+    .finally(() => unload());
 }
 
-// --- Clock In ---
+// ─── Clock In ─────────────────────────────────────────────────────────────────
 function clockIn() {
+  if (isProcessing) return;
   hideError("clockInError");
   const workType = document.getElementById("workType").value;
   const siteName = getSiteName("clockIn");
+  if (workType !== "Office" && !siteName) { showError("clockInError","Please enter a site name."); return; }
+  if (workType === "Install" && !sitesData.includes(siteName)) { showError("clockInError","Please select a valid site from the list."); return; }
 
-  if (workType !== "Office" && !siteName) {
-    showError("clockInError", "Please enter a site name.");
-    return;
-  }
-  if (workType === "Install" && !sitesData.includes(siteName)) {
-    showError("clockInError", "Please select a valid site from the list.");
-    return;
-  }
-
-  setBtn("clockInBtn", true, "Clocking in...");
-
+  load("Clocking In...");
   getGPS()
-    .then(gps => api({ action: "clockIn", employee: currentUser, workType, siteName, gps }))
+    .then(gps => api({ action:"clockIn", employee:currentUser, workType, siteName, gps }))
     .then(d => {
       if (d.success) {
         document.getElementById("workingStatus").innerText = workType + " — " + siteName;
         clearSiteName("clockIn");
+        saveCancelDeadline();
         showOnly("working");
-      } else {
-        showError("clockInError", "Clock in failed. Please try again.");
-      }
+      } else showError("clockInError","Clock in failed. Please try again.");
     })
     .catch(err => showError("clockInError", err))
-    .finally(() => setBtn("clockInBtn", false, "Clock In"));
+    .finally(() => unload());
 }
 
-// --- Travel ---
-function showTravel() { showOnly("travel"); }
-function cancelTravel() { showOnly("working"); }
+// ─── Travel ───────────────────────────────────────────────────────────────────
+function showTravel() { if (!isProcessing) showOnly("travel"); }
 
 function startTravel() {
+  if (isProcessing) return;
   hideError("travelError");
-  const destination  = document.getElementById("destination").value.trim();
-  const odometerStart = document.getElementById("odoStart").value;
+  const dest = document.getElementById("destination").value.trim();
+  const odo  = document.getElementById("odoStart").value;
+  if (!dest) { showError("travelError","Please enter a destination."); return; }
+  if (!odo)  { showError("travelError","Please enter odometer start reading."); return; }
 
-  if (!destination) {
-    showError("travelError", "Please select a destination.");
-    return;
-  }
-  if (!odometerStart) {
-    showError("travelError", "Please enter odometer start reading.");
-    return;
-  }
-
+  load("Starting Travel...");
   getGPS()
     .then(gps => {
       travelDepartureGPS = gps;
-      return api({ action: "startTravel", employee: currentUser, destination, odometerStart, gps });
+      return api({ action:"startTravel", employee:currentUser, destination:dest, odometerStart:odo, gps });
     })
     .then(d => {
       if (d.success) {
+        document.getElementById("travelDestLabel").innerText = dest;
         document.getElementById("destination").value = "";
         document.getElementById("odoStart").value = "";
+        saveCancelDeadline();
         showOnly("traveling");
-      } else {
-        showError("travelError", "Failed to start travel. Please try again.");
-      }
+      } else showError("travelError","Failed to start travel. Please try again.");
     })
-    .catch(err => showError("travelError", err));
+    .catch(err => showError("travelError", err))
+    .finally(() => unload());
 }
 
-function showArrival() { showOnly("arrival"); }
-
 function arriveAtSite() {
+  if (isProcessing) return;
   hideError("arrivalError");
-  const odometerEnd = document.getElementById("odoEnd").value;
-  const workType    = document.getElementById("arrivalWorkType").value;
-  const siteName    = getSiteName("arrival");
+  const odoEnd   = document.getElementById("odoEnd").value;
+  const workType = document.getElementById("arrivalWorkType").value;
+  const siteName = getSiteName("arrival");
+  if (!odoEnd)   { showError("arrivalError","Please enter odometer end reading."); return; }
+  if (workType !== "Office" && !siteName) { showError("arrivalError","Please enter a site name."); return; }
+  if (workType === "Install" && !sitesData.includes(siteName)) { showError("arrivalError","Please select a valid site."); return; }
 
-  if (!odometerEnd) {
-    showError("arrivalError", "Please enter odometer end reading.");
-    return;
-  }
-  if (workType !== "Office" && !siteName) {
-    showError("arrivalError", "Please enter a site name.");
-    return;
-  }
-  if (workType === "Install" && !sitesData.includes(siteName)) {
-    showError("arrivalError", "Please select a valid site from the list.");
-    return;
-  }
-
+  load("Recording Arrival...");
   getGPS()
-    .then(gpsEnd => api({
-      action: "arriveAtSite",
-      employee: currentUser,
-      gpsEnd,
-      odometerEnd,
-      workType,
-      siteName,
-      gpsStart: travelDepartureGPS || gpsEnd
-    }))
+    .then(gpsEnd => api({ action:"arriveAtSite", employee:currentUser, gpsEnd, odometerEnd:odoEnd, workType, siteName, gpsStart: travelDepartureGPS || gpsEnd }))
     .then(d => {
       if (d.success) {
         document.getElementById("workingStatus").innerText = workType + " — " + siteName;
@@ -507,74 +714,124 @@ function arriveAtSite() {
         clearSiteName("arrival");
         travelDepartureGPS = "";
         showOnly("working");
-      } else {
-        showError("arrivalError", "Failed to record arrival. Please try again.");
-      }
+      } else showError("arrivalError","Failed to record arrival. Please try again.");
     })
-    .catch(err => showError("arrivalError", err));
+    .catch(err => showError("arrivalError", err))
+    .finally(() => unload());
 }
 
-// --- Lunch ---
+// ─── Lunch ────────────────────────────────────────────────────────────────────
 function startLunch() {
+  if (isProcessing) return;
+  load("Starting Lunch Break...");
   getGPS()
-    .then(gps => api({ action: "startLunch", employee: currentUser, gps }))
-    .then(d => {
-      if (d.success) showOnly("lunch");
-      else alert("Failed to start lunch. Please try again.");
-    })
-    .catch(err => alert(err));
+    .then(gps => api({ action:"startLunch", employee:currentUser, gps }))
+    .then(d => { if (d.success) { saveCancelDeadline(); showOnly("lunch"); } else alert("Failed to start lunch. Please try again."); })
+    .catch(err => alert(err))
+    .finally(() => unload());
 }
 
 function endLunch() {
-  let lunchEndGPS = "";
+  if (isProcessing) return;
+  load("Ending Lunch Break...");
+  let endGPS = "";
   getGPS()
-    .then(gps => {
-      lunchEndGPS = gps;
-      return api({ action: "endLunch", employee: currentUser, gps });
-    })
+    .then(gps => { endGPS = gps; return api({ action:"endLunch", employee:currentUser, gps }); })
     .then(d => {
-      if (d.success) {
-        if (d.resumeType === "TRAVEL") {
-          travelDepartureGPS = lunchEndGPS;
-          showOnly("traveling");
-        } else {
-          showOnly("working");
-        }
-      } else {
-        alert("Failed to end lunch. Please try again.");
-      }
+      if (d.success) { if (d.resumeType === "TRAVEL") { travelDepartureGPS = endGPS; showOnly("traveling"); } else showOnly("working"); }
+      else alert("Failed to end lunch. Please try again.");
     })
-    .catch(err => alert(err));
+    .catch(err => alert(err))
+    .finally(() => unload());
 }
 
-// --- Clock Out ---
-function confirmClockOut() { showOnly("clockOut"); }
-function cancelClockOut()  { showOnly("working"); }
+// ─── Clock Out ────────────────────────────────────────────────────────────────
+function confirmClockOut() { if (!isProcessing) showOnly("clockOut"); }
 
 function clockOut() {
+  if (isProcessing) return;
+  load("Clocking Out...");
   getGPS()
-    .then(gps => api({ action: "clockOut", employee: currentUser, gps }))
+    .then(gps => api({ action:"clockOut", employee:currentUser, gps }))
     .then(d => {
-      if (d.success) {
-        clearState();
-        location.reload();
-      } else {
-        alert("Clock out failed. Please try again.");
-        showOnly("working");
-      }
+      if (d.success) { clearUserSession(); location.reload(); }
+      else { alert("Clock out failed. Please try again."); showOnly("working"); }
     })
-    .catch(err => {
-      alert(err);
-      showOnly("working");
-    });
+    .catch(err => { alert(err); showOnly("working"); })
+    .finally(() => unload());
 }
 
-// --- Init ---
+// ─── Log ──────────────────────────────────────────────────────────────────────
+function viewLog() {
+  if (isProcessing) return;
+  preLogState = currentState === "log" ? "home" : currentState;
+  showOnly("log");
+  loadLog();
+}
+function closeLog() { showOnly(preLogState || "home"); }
+
+function getTodayStr() {
+  const n = new Date();
+  return String(n.getMonth()+1).padStart(2,"0")+"/"+String(n.getDate()).padStart(2,"0")+"/"+n.getFullYear();
+}
+
+function loadLog() {
+  document.getElementById("logToday").innerHTML   = `<div class="log-empty">Loading...</div>`;
+  document.getElementById("logHistory").innerHTML = "";
+  api({ action:"getEmployeeLog", employee:currentUser })
+    .then(d => {
+      if (!d.success) { document.getElementById("logToday").innerHTML = `<div class="log-empty" style="color:#c0392b;">Failed to load.</div>`; return; }
+      const today = getTodayStr();
+      renderEntries("logToday",   d.rows.filter(r => r.date === today));
+      renderHistory("logHistory", d.rows.filter(r => r.date !== today));
+    })
+    .catch(() => { document.getElementById("logToday").innerHTML = `<div class="log-empty" style="color:#c0392b;">Connection error.</div>`; });
+}
+
+function entryHTML(r) {
+  const label = r.type === "WORK" ? (r.workType || "Work") : r.type === "TRAVEL" ? "Travel" : "Lunch";
+  const main  = r.type === "WORK"   ? (r.siteName    || "—")
+              : r.type === "TRAVEL" ? (r.destination || "—")
+              : "Lunch Break";
+  const time  = r.timeStart ? r.timeStart + (r.timeEnd ? " – " + r.timeEnd : " (ongoing)") : "";
+  const miles = r.miles && Number(r.miles) > 0 ? " · " + r.miles + " mi" : "";
+  return `<div class="log-entry">
+    <div class="log-entry-type">${label}</div>
+    <div class="log-entry-main">${main}</div>
+    <div class="log-entry-sub">${time}${miles}</div>
+  </div>`;
+}
+
+function renderEntries(id, rows) {
+  document.getElementById(id).innerHTML = rows.length
+    ? `<div class="card" style="padding:4px 16px 0;">${rows.map(entryHTML).join("")}</div>`
+    : `<div class="log-empty">No entries today.</div>`;
+}
+
+function renderHistory(id, rows) {
+  const el = document.getElementById(id);
+  if (!rows.length) { el.innerHTML = `<div class="log-empty">No history yet.</div>`; return; }
+  const byDate = {};
+  rows.forEach(r => { if (!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
+  const sorted = Object.keys(byDate).sort((a,b) => new Date(b)-new Date(a));
+  el.innerHTML = sorted.map(date =>
+    `<div class="log-date-label">${date}</div><div class="card" style="padding:4px 16px 0;">${byDate[date].map(entryHTML).join("")}</div>`
+  ).join("");
+}
+
+function showLogTab(tab) {
+  document.getElementById("logToday").classList.toggle("hidden",    tab !== "today");
+  document.getElementById("logHistory").classList.toggle("hidden",  tab !== "history");
+  document.getElementById("tabToday").classList.toggle("active",    tab === "today");
+  document.getElementById("tabHistory").classList.toggle("active",  tab === "history");
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
 restoreState();
 loadSites();
 updateWorkTypeUI("clockIn");
 updateWorkTypeUI("arrival");
-
+refreshCancelButtons();
 </script>
 </body>
 </html>
