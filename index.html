@@ -585,8 +585,8 @@ function setupSearchSelect(inputId) {
     const hits = f ? sitesData.filter(s => s.toLowerCase().includes(f.toLowerCase())) : sitesData;
     dd.innerHTML = hits.map(s => `<div class="search-option">${s}</div>`).join("");
     dd.classList.toggle("hidden", !hits.length);
-    dd.querySelectorAll(".search-option").forEach(o => o.addEventListener("pointerdown", e => {
-      e.preventDefault(); input.value = o.innerText; dd.classList.add("hidden");
+    dd.querySelectorAll(".search-option").forEach(o => o.addEventListener("click", e => {
+      input.value = o.innerText; dd.classList.add("hidden");
     }));
   }
   input.addEventListener("focus", () => render(input.value));
