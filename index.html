@@ -161,12 +161,14 @@ body {
   background: #252525;
   border: 1px solid #333;
   border-radius: 12px;
-  max-height: 210px;
-  overflow-y: auto;
+  max-height: 240px;
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   z-index: 500;
   box-shadow: 0 8px 24px rgba(0,0,0,0.6);
 }
-.search-option { padding: 14px 16px; color: #ddd; cursor: pointer; font-size: 15px; border-bottom: 1px solid #2e2e2e; }
+.search-option { padding: 16px; color: #ddd; cursor: pointer; font-size: 16px; border-bottom: 1px solid #2e2e2e; user-select: none; }
 .search-option:last-child { border-bottom: none; }
 .search-option:active { background: #2e2e2e; }
 
