@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -183,8 +184,15 @@ body {
 .log-entry-type { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #666; margin-bottom: 3px; }
 .log-entry-main { font-size: 16px; font-weight: 500; margin-bottom: 2px; }
 .log-entry-sub  { font-size: 13px; color: #666; }
-.log-date-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #c0392b; margin: 18px 0 8px; }
+.log-date-label { display:flex; justify-content:space-between; align-items:center; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #c0392b; margin: 18px 0 8px; }
+.log-date-total { font-size: 13px; color: #aaa; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.log-today-total { display:flex; justify-content:space-between; align-items:center; padding: 12px 0 14px; border-bottom: 1px solid #2a2a2a; margin-bottom: 4px; }
+.log-today-total-label { font-size: 13px; color: #888; }
+.log-today-total-value { font-size: 18px; font-weight: 700; color: #fff; }
 .log-empty { text-align: center; padding: 40px 0; color: #444; font-size: 15px; }
+
+/* Header log button */
+.header-log-btn { background: #2a2a2a; border: none; color: #ccc; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 8px; cursor: pointer; }
 
 .hidden { display: none !important; }
 </style>
@@ -210,7 +218,10 @@ body {
 <!-- Header -->
 <div class="app-header">
   <span class="app-header-title">Sentry Security</span>
-  <span class="app-header-user" id="headerUser"></span>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button onclick="viewLog()" id="logHeaderBtn" class="header-log-btn hidden">My Log</button>
+    <span class="app-header-user" id="headerUser"></span>
+  </div>
 </div>
 
 <div class="page">
@@ -397,6 +408,8 @@ let travelDepartureGPS = "";
 let sitesData          = [];
 let isProcessing       = false;
 let preLogState        = "home";
+let cachedLogRows      = [];
+let logLiveTimer       = null;
 
 // ─── Persistence ─────────────────────────────────────────────────────────────
 function saveState() {
@@ -419,6 +432,7 @@ function restoreState() {
   document.getElementById("travelDestLabel").innerText   = dest;
   document.getElementById("loginDiv").classList.add("hidden");
   document.getElementById("appDiv").classList.remove("hidden");
+  document.getElementById("logHeaderBtn").classList.remove("hidden");
   showOnly(state);
 }
 
@@ -627,6 +641,7 @@ function login() {
         document.getElementById("homeWelcome").innerText = d.name;
         document.getElementById("loginDiv").classList.add("hidden");
         document.getElementById("appDiv").classList.remove("hidden");
+        document.getElementById("logHeaderBtn").classList.remove("hidden");
         if (d.activeSession) {
           const s = d.activeSession;
           document.getElementById("workingStatus").innerText = s.workType && s.siteName ? s.workType + " — " + s.siteName : "";
@@ -756,8 +771,13 @@ function clockOut() {
   getGPS()
     .then(gps => api({ action:"clockOut", employee:currentUser, gps }))
     .then(d => {
-      if (d.success) { clearUserSession(); location.reload(); }
-      else { alert("Clock out failed. Please try again."); showOnly("working"); }
+      if (d.success) {
+        sessionStorage.removeItem("sentry_state");
+        sessionStorage.removeItem("sentry_status");
+        sessionStorage.removeItem("sentry_cancelDeadline");
+        document.getElementById("workingStatus").innerText = "";
+        showOnly("home");
+      } else { alert("Clock out failed. Please try again."); showOnly("working"); }
     })
     .catch(err => { alert(err); showOnly("working"); })
     .finally(() => unload());
@@ -770,22 +790,69 @@ function viewLog() {
   showOnly("log");
   loadLog();
 }
-function closeLog() { showOnly(preLogState || "home"); }
+
+function closeLog() {
+  if (logLiveTimer) { clearInterval(logLiveTimer); logLiveTimer = null; }
+  showOnly(preLogState || "home");
+}
 
 function getTodayStr() {
   const n = new Date();
   return String(n.getMonth()+1).padStart(2,"0")+"/"+String(n.getDate()).padStart(2,"0")+"/"+n.getFullYear();
 }
 
+// ─── Time helpers ─────────────────────────────────────────────────────────────
+function parseTimeMins(str) {
+  if (!str) return null;
+  const m = str.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return null;
+  let h = parseInt(m[1]);
+  const mn = parseInt(m[2]);
+  if (m[3].toUpperCase() === "PM" && h !== 12) h += 12;
+  if (m[3].toUpperCase() === "AM" && h === 12) h = 0;
+  return h * 60 + mn;
+}
+
+function rowMins(r) {
+  if (r.type === "LUNCH") return 0;
+  const start = parseTimeMins(r.timeStart);
+  if (start === null) return 0;
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const end = r.timeEnd ? parseTimeMins(r.timeEnd) : nowMins;
+  return Math.max(0, (end || 0) - start);
+}
+
+function fmtHrs(mins) {
+  if (!mins || mins <= 0) return "0 hrs";
+  return (mins / 60).toFixed(1) + " hrs";
+}
+
+function dayTotalMins(rows) {
+  return rows.reduce((sum, r) => sum + rowMins(r), 0);
+}
+
+// ─── Log rendering ────────────────────────────────────────────────────────────
 function loadLog() {
   document.getElementById("logToday").innerHTML   = `<div class="log-empty">Loading...</div>`;
   document.getElementById("logHistory").innerHTML = "";
+  if (logLiveTimer) { clearInterval(logLiveTimer); logLiveTimer = null; }
+
   api({ action:"getEmployeeLog", employee:currentUser })
     .then(d => {
       if (!d.success) { document.getElementById("logToday").innerHTML = `<div class="log-empty" style="color:#c0392b;">Failed to load.</div>`; return; }
+      cachedLogRows = d.rows;
       const today = getTodayStr();
-      renderEntries("logToday",   d.rows.filter(r => r.date === today));
+      renderToday(d.rows.filter(r => r.date === today));
       renderHistory("logHistory", d.rows.filter(r => r.date !== today));
+      // Refresh today's total every 60s if there's an ongoing entry
+      if (d.rows.some(r => r.date === today && !r.timeEnd)) {
+        logLiveTimer = setInterval(() => {
+          const todayRows = cachedLogRows.filter(r => r.date === getTodayStr());
+          const el = document.getElementById("todayTotalValue");
+          if (el) el.innerText = fmtHrs(dayTotalMins(todayRows));
+        }, 60000);
+      }
     })
     .catch(() => { document.getElementById("logToday").innerHTML = `<div class="log-empty" style="color:#c0392b;">Connection error.</div>`; });
 }
@@ -804,9 +871,18 @@ function entryHTML(r) {
   </div>`;
 }
 
-function renderEntries(id, rows) {
-  document.getElementById(id).innerHTML = rows.length
-    ? `<div class="card" style="padding:4px 16px 0;">${rows.map(entryHTML).join("")}</div>`
+function renderToday(rows) {
+  const total = dayTotalMins(rows);
+  const hasOngoing = rows.some(r => !r.timeEnd);
+  const totalLabel = hasOngoing ? "Today (live)" : "Today's Total";
+  document.getElementById("logToday").innerHTML = rows.length
+    ? `<div class="card" style="padding:8px 16px 4px;">
+        <div class="log-today-total">
+          <span class="log-today-total-label">${totalLabel}</span>
+          <span class="log-today-total-value" id="todayTotalValue">${fmtHrs(total)}</span>
+        </div>
+        ${rows.map(entryHTML).join("")}
+      </div>`
     : `<div class="log-empty">No entries today.</div>`;
 }
 
@@ -816,16 +892,18 @@ function renderHistory(id, rows) {
   const byDate = {};
   rows.forEach(r => { if (!byDate[r.date]) byDate[r.date]=[]; byDate[r.date].push(r); });
   const sorted = Object.keys(byDate).sort((a,b) => new Date(b)-new Date(a));
-  el.innerHTML = sorted.map(date =>
-    `<div class="log-date-label">${date}</div><div class="card" style="padding:4px 16px 0;">${byDate[date].map(entryHTML).join("")}</div>`
-  ).join("");
+  el.innerHTML = sorted.map(date => {
+    const total = fmtHrs(dayTotalMins(byDate[date]));
+    return `<div class="log-date-label"><span>${date}</span><span class="log-date-total">${total}</span></div>
+      <div class="card" style="padding:4px 16px 0;">${byDate[date].map(entryHTML).join("")}</div>`;
+  }).join("");
 }
 
 function showLogTab(tab) {
-  document.getElementById("logToday").classList.toggle("hidden",    tab !== "today");
-  document.getElementById("logHistory").classList.toggle("hidden",  tab !== "history");
-  document.getElementById("tabToday").classList.toggle("active",    tab === "today");
-  document.getElementById("tabHistory").classList.toggle("active",  tab === "history");
+  document.getElementById("logToday").classList.toggle("hidden",   tab !== "today");
+  document.getElementById("logHistory").classList.toggle("hidden", tab !== "history");
+  document.getElementById("tabToday").classList.toggle("active",   tab === "today");
+  document.getElementById("tabHistory").classList.toggle("active", tab === "history");
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -837,3 +915,4 @@ refreshCancelButtons();
 </script>
 </body>
 </html>
+
